@@ -1,32 +1,27 @@
-##tuner
-# July 21st 2024 - August 5th 2024
+## Musical Tuner Project
+# July 21st to August 10th
 # Kirsten Ticzon
 
-## Set up environment
-import numpy as np
+
+# Setting up environment
 import pyaudio
 import pygame
+import numpy as np
 import sys
 
-## Capture audio
-# Constants in hertz
-sr = 48000
-# Middle point of lag versus quick output
+# Pyaudio setup
+sr = 48000 
 bufferSamples = 2048
 
-# PyAudio setup
 pa = pyaudio.PyAudio()
-stream = pa.open(format=pyaudio.paInt16,
-                 channels=1,
-                 rate=sr,
-                 input=True)
+stream = pa.open(format=pyaudio.paInt16, channels=1, rate=sr, input=True)
 
-## Create function to record and store audio
+# Function to record and store audio
 def recordAudio():
     audioCollected = np.frombuffer(stream.read(bufferSamples), dtype=np.int16)
     return audioCollected
 
-## Isolate main pitch detected in recording
+# Function to get the frequency of the main pitch detected in the recording
 def getFrequency(signal):
     result = np.fft.fft(signal)
     frequencies = np.fft.fftfreq(len(signal), 1/sr)
@@ -34,49 +29,42 @@ def getFrequency(signal):
     peak = frequencies[indexAmp]
     return abs(peak)
 
-## Adding musical value to pitch
-def assignNote (frequency):
-    A4 = 440.0
-    notes = {
-        "C": A4 * 2 ** (-9/12),
-        "C#": A4 * 2 ** (-8/12),
-        "D": A4 * 2 ** (-7/12),
-        "D#": A4 * 2 ** (-6/12),
-        "E": A4 * 2 ** (-5/12),
-        "F": A4 * 2 ** (-4/12),
-        "F#": A4 * 2 ** (-3/12),
-        "G": A4 * 2 ** (-2/12),
-        "G#": A4 * 2 ** (-1/12),
-        "A": A4,
-        "A#": A4 * 2 ** (1/12),
-        "B": A4 * 2 ** (2/12),
-        "C5": A4 * 2 ** (3/12),
-    }
+# Function to assign musical note to pitch
+def assignNote(frequency):
+    # Set base frequencies
+    baseFrequencies = {
+        "C": 16.35,
+        "C#": 17.32,
+        "D": 18.35,
+        "Eb": 19.45,
+        "E": 20.60,
+        "F": 21.83,
+        "F#": 23.12,
+        "G": 24.50,
+        "G#": 25.96,
+        "A": 27.50,
+        "Bb": 29.14,
+        "B": 30.87 }
+    
+    noteFrequencies = {}
+    for note, baseFreq in baseFrequencies.items():
+        noteFrequencies[note] = [baseFreq * (2 ** i) for i in range(9)]
+
+    # Find the closest note and octave
     minDif = float("inf")
     closestNote = None
-    for note, noteFrequency in notes.items():
-        difference = abs(frequency - noteFrequency)
-        if difference < minDif:
-            minDif = difference
-            closestNote = note
+
+    for note, freqs in noteFrequencies.items():
+        for noteFreq in freqs:
+            difference = abs(frequency - noteFreq)
+            if difference < minDif:
+                minDif = difference
+                closestNote = note
+
     return closestNote
 
 # Valid notes
-notes = {
-    "C": 261.63,
-    "C#": 277.18,
-    "D": 293.66,
-    "D#": 311.13,
-    "E": 329.63,
-    "F": 349.23,
-    "F#": 369.99,
-    "G": 392.00,
-    "G#": 415.30,
-    "A": 440.00,
-    "A#": 466.16,
-    "B": 493.88,
-    "C5": 523.25,
-}
+validnotes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "G#", "A", "Bb", "B"]
 
 ## Pygame setup
 pygame.init()
@@ -118,18 +106,18 @@ class Background():
         pygame.draw.rect(screen, LAVENDER, [x, y, 700, 410])
 
 # Buttons
-tuner_button = pygame.Rect(300, 200, 200, 50)
-target_tuner_button = pygame.Rect(300, 300, 200, 50)
+tunerButton = pygame.Rect(300, 200, 200, 50)
+targetTunerButton = pygame.Rect(300, 300, 200, 50)
 start = pygame.Rect(300, 300, 100, 50)
 stop = pygame.Rect(420, 300, 100, 50)
 restart = pygame.Rect(340, 370, 140, 50)
-back_button = pygame.Rect(50, 50, 100, 50)
+backButton = pygame.Rect(50, 50, 100, 50)
 
 # Initializing variables
 isRecording = False
+targetSet = False
 detectedNote = ""
 targetNote = ""
-targetSet = False
 noteEntry = ""
 attempts = 0
 done = False
@@ -145,26 +133,26 @@ def main_menu():
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if tuner_button.collidepoint(event.pos):
+                if tunerButton.collidepoint(event.pos):
                     tuner()
-                elif target_tuner_button.collidepoint(event.pos):
-                    target_tuner()
+                elif targetTunerButton.collidepoint(event.pos):
+                    targetTuner()
 
         screen.fill(WHITE)
         background.topbar(screen)
         background.center(screen)
 
-        tuner_button = pygame.Rect(300, 200, 200, 50)
-        target_tuner_button = pygame.Rect(290, 300, 220, 50)
+        tunerButton = pygame.Rect(300, 200, 200, 50)
+        targetTunerButton = pygame.Rect(290, 300, 220, 50)
         
-        pygame.draw.rect(screen, LIGHTGREEN, tuner_button)
-        pygame.draw.rect(screen, LIGHTGREEN, target_tuner_button)
+        pygame.draw.rect(screen, LIGHTGREEN, tunerButton)
+        pygame.draw.rect(screen, LIGHTGREEN, targetTunerButton)
 
         tunerText = font.render("Tuner", True, BLACK)
         targetTunerText = font.render("Target Tuner", True, BLACK)
 
-        screen.blit(tunerText, (tuner_button.x + 55, tuner_button.y + 10))
-        screen.blit(targetTunerText, (target_tuner_button.x + 10, target_tuner_button.y + 10))
+        screen.blit(tunerText, (tunerButton.x + 55, tunerButton.y + 10))
+        screen.blit(targetTunerText, (targetTunerButton.x + 10, targetTunerButton.y + 10))
 
         pygame.display.flip()
         clock.tick(60)
@@ -183,7 +171,7 @@ def tuner():
                 elif stop.collidepoint(event.pos):
                     isRecording = False
                     detectedNote = ""
-                elif back_button.collidepoint(event.pos):
+                elif backButton.collidepoint(event.pos):
                     return main_menu()
 
         if isRecording:
@@ -197,7 +185,7 @@ def tuner():
 
         pygame.draw.rect(screen, LIGHTGREEN if isRecording else LIGHTYELLOW, start)
         pygame.draw.rect(screen, LIGHTGREEN if not isRecording else LIGHTYELLOW, stop)
-        pygame.draw.rect(screen, LIGHTYELLOW, back_button)
+        pygame.draw.rect(screen, LIGHTYELLOW, backButton)
 
         startText = font.render("Start", True, WHITE if isRecording else BLACK)
         stopText = font.render("Stop", True, WHITE if not isRecording else BLACK)
@@ -205,7 +193,7 @@ def tuner():
 
         screen.blit(startText, (start.x + 10, start.y + 10))
         screen.blit(stopText, (stop.x + 10, stop.y + 10))
-        screen.blit(backText, (back_button.x + 10, back_button.y + 10))
+        screen.blit(backText, (backButton.x + 10, backButton.y + 10))
 
         if detectedNote:
             noteText = noteFont.render(f"{detectedNote}", True, BLACK)
@@ -214,7 +202,7 @@ def tuner():
         pygame.display.flip()
         clock.tick(60)
 
-def target_tuner():
+def targetTuner():
     global isRecording, detectedNote, targetNote, targetSet, noteEntry, attempts, done
     targetSet = False
     notePrompt = "Type the note you want to hit:"
@@ -230,7 +218,7 @@ def target_tuner():
             elif event.type == pygame.KEYDOWN:
                 if not targetSet:
                     if event.key == pygame.K_RETURN:
-                        if noteEntry in notes:
+                        if noteEntry in validnotes:
                             targetNote = noteEntry
                             targetSet = True
                         else:
@@ -238,7 +226,7 @@ def target_tuner():
                             notePrompt = "Invalid note. Try again."
                             noteEntry = ""
                             if attempts == 3:
-                                notePrompt = "Please enter: "+", ".join(notes.keys())
+                                notePrompt = "Please enter: "+", ".join(validnotes)
                                 attempts = 0
                     elif event.key == pygame.K_BACKSPACE:
                         noteEntry = noteEntry[:-1]
@@ -256,7 +244,7 @@ def target_tuner():
                         notePrompt = "What note do you want to hit?"
                         noteEntry = ""
                         attempts = 0
-                    elif back_button.collidepoint(event.pos):
+                    elif backButton.collidepoint(event.pos):
                         return main_menu()
 
         if isRecording:
@@ -287,7 +275,7 @@ def target_tuner():
             pygame.draw.rect(screen, LIGHTGREEN if isRecording else LIGHTYELLOW, start)
             pygame.draw.rect(screen, LIGHTGREEN if not isRecording else LIGHTYELLOW, stop)
             pygame.draw.rect(screen, PINK, restart)
-            pygame.draw.rect(screen, LAVENDER, back_button)
+            pygame.draw.rect(screen, LAVENDER, backButton)
 
             startText = font.render("Start", True, WHITE if isRecording else BLACK)
             stopText = font.render("Stop", True, WHITE if not isRecording else BLACK)
@@ -297,7 +285,7 @@ def target_tuner():
             screen.blit(startText, (start.x + 10, start.y + 10))
             screen.blit(stopText, (stop.x + 10, stop.y + 10))
             screen.blit(restartText, (restart.x + 10, restart.y + 10))
-            screen.blit(backText, (back_button.x + 10, back_button.y + 10))
+            screen.blit(backText, (backButton.x + 10, backButton.y + 10))
 
             if detectedNote:
                 noteText = noteFont.render(f"{detectedNote}", True, BLACK)
